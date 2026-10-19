@@ -7,7 +7,9 @@ authors = [
     { name = "jpuf0", email = "jpuf@jpuf.xyz" }
 ]
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "numpy>=2.5.4",
+]
 
 [project.scripts]
 spider-cw = "spider_cw.main:main"
