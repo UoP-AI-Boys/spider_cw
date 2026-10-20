@@ -24,6 +24,14 @@ MAX_MUTATION_RATE = 0.3
 MUTATION_SIGMA = 0.1
 RANDOM_DIVERSITY = 0.3
 
+"""
+1. Create new chromosomes with 300 frames of 24 joint angles.
+2. Fitness function
+2.1. Fitness for one frame.
+2.2. Fitness for sequential frames respecting previous frames.
+2.3. Fitness for spider gait.
+2.4. Process all frames.
+"""
 
 class Chromosome:
     def __init__(self, genes):
