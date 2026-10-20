@@ -25,7 +25,7 @@ MUTATION_SIGMA = 0.1
 RANDOM_DIVERSITY = 0.3
 
 
-class Genome:
+class Chromosome:
     def __init__(self, genes):
         self.genes = list(genes)
 
@@ -50,22 +50,22 @@ class Genome:
         return self.genes[index]
 
 
-def generate_genome() -> Genome:
-    """Generates a random genome."""
-    return Genome.random()
+def generate_chromosome() -> Chromosome:
+    """Generates a random chromosome."""
+    return Chromosome.random()
 
 
 def generate_population(size=150):
-    """generates a single generation of genomes"""
+    """generates a single generation of chromosomes"""
     population = []
     for i in range(size):
-        genome = generate_genome()
-        population.append(genome)
+        chromosome = generate_chromosome()
+        population.append(chromosome)
     return population
 
 
-def fitness_term(genome: Genome):
-    feet = foot_positions(genome)
+def fitness_term(chromosome: Chromosome):
+    feet = foot_positions(chromosome)
 
     ground = np.mean((feet[:, 2] - GROUND_Z) ** 2)
 
@@ -80,8 +80,8 @@ def fitness_term(genome: Genome):
     return {"ground": ground, "reach": reach, "symmetry": symmetry}
 
 
-def fitness(genome: Genome):
-    terms = fitness_term(genome)
+def fitness(chromosome: Chromosome):
+    terms = fitness_term(chromosome)
     total = sum(WEIGHTS[k] * v for k, v in terms.items())
     return 1.0 / (1.0 + total)
 
@@ -93,7 +93,7 @@ def tournament_selection(population, fitness_values, tournament_size=TOURNAMENT_
 
 
 def population_diversity(population):
-    genes = np.array([genome.genes for genome in population])
+    genes = np.array([chromosome.genes for chromosome in population])
     widths = np.array([JOINT_WIDTHS[i % 3] for i in range(NUM_GENES)])
     return float(np.mean(genes.std() / widths))
 
@@ -102,19 +102,19 @@ def mutation_rate(population, base=BASE_MUTATION_RATE, top=MAX_MUTATION_RATE):
     convergence = max(0.0, 1 - population_diversity(population) / RANDOM_DIVERSITY)
     return base + (top - base) * convergence
 
-def mutate(genome, mutation_rate, sigma=MUTATION_SIGMA):
+def mutate(chromosome, mutation_rate, sigma=MUTATION_SIGMA):
     for i in range(NUM_GENES):
         if rn.random() < mutation_rate:
-            genome.genes[i] += rn.gauss(0, sigma * JOINT_WIDTHS[i % 3])
-    return genome.clamp()
+            chromosome.genes[i] += rn.gauss(0, sigma * JOINT_WIDTHS[i % 3])
+    return chromosome.clamp()
 
 def crossover(parent_one, parent_two, mutation_rate):
     if len(parent_one) != len(parent_two):
-        raise ValueError("parent genomes must have the same length")
+        raise ValueError("parent chromosomes must have the same length")
 
     crossover_point = rn.randint(1, NUM_GENES - 1)
-    child_one = Genome(parent_one.genes[:crossover_point] + parent_two.genes[crossover_point:])
-    child_two = Genome(parent_two.genes[:crossover_point] + parent_one.genes[crossover_point:])
+    child_one = Chromosome(parent_one.genes[:crossover_point] + parent_two.genes[crossover_point:])
+    child_two = Chromosome(parent_two.genes[:crossover_point] + parent_one.genes[crossover_point:])
     return mutate(child_one, mutation_rate), mutate(child_two, mutation_rate)
 
 def next_generation(population, fitness_values):
@@ -139,10 +139,10 @@ def main():
     history = []
 
     for generation in range(MAX_GENERATIONS + 1):
-        fitness_values = [fitness(genome) for genome in population]
+        fitness_values = [fitness(chromosome) for chromosome in population]
         best_index = int(np.argmax(fitness_values))
         fitness_max = fitness_values[best_index]
-        best_genome = population[best_index]
+        best_chromosome = population[best_index]
         history.append((fitness_max, float(np.mean(fitness_values))))
 
         print(f"Generation {generation} max {fitness_max} mean {history[-1][1]} diversity {population_diversity(population)}")
@@ -151,10 +151,10 @@ def main():
             break
         population = next_generation(population, fitness_values)
 
-    print("Best Genome:", best_genome.genes)
+    print("Best chromosome:", best_chromosome.genes)
     print("Fitness Max", fitness_max)
-    print("Error terms:", {k: round(float(v), 5) for k, v in fitness_term(best_genome).items()})
-    # return best_genome, history
+    print("Error terms:", {k: round(float(v), 5) for k, v in fitness_term(best_chromosome).items()})
+    # return best_chromosome, history
 
 
 
@@ -162,10 +162,10 @@ def test_main():
     # known_good_angles = [-0.2, -0.4, -1.2, -0.2, -0.4, -1.2, -0.2, -0.4, -1.2, -0.2, -0.4, -1.2, -0.2, -0.4, -1.2, -0.2, -0.4, -1.2, -0.2, -0.4, -1.2, -0.2, -0.4, -1.2];
     # known_good_angles = [0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1];
 
-    genome1 = Genome([0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1])
-    genome2 = Genome([0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2])
+    chromosome1 = Chromosome([0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1, 0, -1, -1])
+    chromosome2 = Chromosome([0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2, 0, -0.6, -1.2])
 
-    genome1_fitness = fitness(genome1)
-    # genome2_fitness = fitness(genome2)
-    print("genome1_fitness", genome1_fitness)
-    # print("genome2_fitness", genome2_fitness)
+    chromosome1_fitness = fitness(chromosome1)
+    # chromosome2_fitness = fitness(chromosome2)
+    print("chromosome1_fitness", chromosome1_fitness)
+    # print("chromosome2_fitness", chromosome2_fitness)
