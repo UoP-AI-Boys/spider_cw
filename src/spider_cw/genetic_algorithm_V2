@@ -1,0 +1,63 @@
+import random as rn
+
+class Chromosome():
+    def __int__(self):
+        self.coxa = ()
+        self.femur = ()
+        self.tibia = ()
+    
+    def initialise_chromosomes(self):
+        self.legs = []
+        for i in range (8):
+            self.coxa = rn.uniform (-0.52,0.52)
+            self.femur = rn.uniform (-0.52,0)
+            self.tibia = rn.uniform (-0.52,0.2)
+            self.legs.append([self.coxa,self.femur,self.tibia])
+
+    def __str__(self):
+        return (f"leg:{self.legs}")
+
+class Population():
+    def __init__(self):
+        self.population_size = 300
+        self.population_chromosomes = []
+
+    def generate_population(self):
+        for i in range (0,self.population_size):
+            self.chromosome = Chromosome()
+            self.chromosome.initialise_chromosomes()
+            self.population_chromosomes.append(self.chromosome)
+
+
+    def __str__(self):
+        self.str = ""
+        for i in self.population_chromosomes:
+            self.str += str(f"spider: {i.legs} \n")
+        return (f"a population of size: {self.population_size}... chromosomes: {self.str}")
+
+def return_unpacked_population(population):
+    unpacked_array = []
+    for chromosome in (population.population_chromosomes):
+        for leg in (chromosome.legs):
+            for joint in (leg):
+                unpacked_array.append(joint)
+    print (unpacked_array)
+
+def return_unpacked_single_chromosome(population):
+    unpacked_chromosome = []
+    chromosome = population.population_chromosomes[1]
+    for leg in chromosome.legs:
+        for joint in leg:
+            unpacked_chromosome.append(joint)
+    return unpacked_chromosome
+
+def main():
+    population_1 = Population()
+    population_1.generate_population()
+    single_chromo = return_unpacked_single_chromosome(population_1)
+    return (single_chromo)
+
+
+
+main()
+        

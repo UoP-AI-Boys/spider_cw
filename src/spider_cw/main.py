@@ -3,6 +3,7 @@ import time
 import copy
 import pprint
 import random as rn
+import genetic_algorithm_V2
 
 import numpy as np
 
@@ -173,3 +174,8 @@ def test_main():
     # chromosome2_fitness = fitness(chromosome2)
     print("chromosome1_fitness", chromosome1_fitness)
     # print("chromosome2_fitness", chromosome2_fitness)
+
+def testing():
+    chromosome = genetic_algorithm_V2.main()
+    animate_gait(chromosome)
+testing()

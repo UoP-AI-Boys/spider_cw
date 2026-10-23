@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
-
 from spider_cw.kinematics import BODY_A, BODY_B, LEG_ORDER, leg_joints, BASE_ANGLES
 
 
