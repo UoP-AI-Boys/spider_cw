@@ -1,4 +1,5 @@
 import random as rn
+from kinematics import foot_positions
 
 class Chromosome():
     def __int__(self):
@@ -8,10 +9,10 @@ class Chromosome():
     
     def initialise_chromosomes(self):
         self.legs = []
-        for i in range (8):
+        for i in range (0,8):
             self.coxa = rn.uniform (-0.52,0.52)
             self.femur = rn.uniform (-0.52,0)
-            self.tibia = rn.uniform (-0.52,0.2)
+            self.tibia = rn.uniform (-0.52,0)
             self.legs.append([self.coxa,self.femur,self.tibia])
 
     def __str__(self):
@@ -28,6 +29,21 @@ class Population():
             self.chromosome.initialise_chromosomes()
             self.population_chromosomes.append(self.chromosome)
 
+    def return_unpacked_population(self):
+        self.unpacked_array = []
+        for chromosome in (self.population_chromosomes):
+            for leg in (chromosome.legs):
+                for joint in (leg):
+                    self.unpacked_array.append(joint)
+        return (self.unpacked_array)
+
+    def return_unpacked_single_chromosome(self,chromosome):
+        self.unpacked_chromosome = []
+        for leg in self.chromosome.legs:
+            for joint in leg:
+                self.unpacked_chromosome.append(joint)
+        return self.unpacked_chromosome
+
 
     def __str__(self):
         self.str = ""
@@ -35,29 +51,19 @@ class Population():
             self.str += str(f"spider: {i.legs} \n")
         return (f"a population of size: {self.population_size}... chromosomes: {self.str}")
 
-def return_unpacked_population(population):
-    unpacked_array = []
-    for chromosome in (population.population_chromosomes):
-        for leg in (chromosome.legs):
-            for joint in (leg):
-                unpacked_array.append(joint)
-    print (unpacked_array)
-
-def return_unpacked_single_chromosome(population):
-    unpacked_chromosome = []
-    chromosome = population.population_chromosomes[1]
-    for leg in chromosome.legs:
-        for joint in leg:
-            unpacked_chromosome.append(joint)
-    return unpacked_chromosome
+def fitness_function(genome, foot_positions):
+    for leg in foot_positions:
+        print (leg[2])
 
 def main():
     population_1 = Population()
     population_1.generate_population()
-    single_chromo = return_unpacked_single_chromosome(population_1)
-    return (single_chromo)
-
-
-
+    angles = []
+    for chromosome in population_1.population_chromosomes:
+        unpacked_chromosome = population_1.return_unpacked_single_chromosome(chromosome)
+        feet_locations = foot_positions(unpacked_chromosome)
+    print (feet_locations)
+        
 main()
+
         

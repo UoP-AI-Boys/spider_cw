@@ -44,3 +44,4 @@ def leg_joints(angles):
 
 def foot_positions(angles):
     return leg_joints(angles)[..., 3, :]
+
