@@ -51,7 +51,7 @@ class Population():
             self.str += str(f"spider: {i.legs} \n")
         return (f"a population of size: {self.population_size}... chromosomes: {self.str}")
 
-def fitness_function(genome, foot_positions):
+def fitness_function( foot_positions):
     for leg in foot_positions:
         print (leg[2])
 
@@ -62,6 +62,8 @@ def main():
     for chromosome in population_1.population_chromosomes:
         unpacked_chromosome = population_1.return_unpacked_single_chromosome(chromosome)
         feet_locations = foot_positions(unpacked_chromosome)
+        fitness_function(feet_locations)
+
     print (feet_locations)
         
 main()
