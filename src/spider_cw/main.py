@@ -112,12 +112,18 @@ def compare_joint_vectors(current, previous):
     dists = np.linalg.norm(current_no_base - previous_no_base, axis=-1)
     return bounded_fitness(dists, MAX_JOINT_STEP, MIN_JOINT_STEP)
 
+def four_feet_on_floor (chromosome):
+    for joint in chromosome:
+        pass
+
 def fitness_sequential(chromosome: Chromosome):
     """Mean frame-to-frame movement score over the whole gait (higher is better)."""
     # Forward kinematics: joint angles -> 3D joint positions for every frame.
     joint_vectors = leg_joints(chromosome)
     # Compare each frame (1..N) against the frame before it (0..N-1).
     scores = compare_joint_vectors(joint_vectors[1:], joint_vectors[:-1])
+    # checks if four total feet are touching the ground in-line with the biological tendancies for aracnid gaits
+    four_feet_on_floor(chromosome)
     return np.mean(scores)
 
 def fitness(chromosome: Chromosome):
