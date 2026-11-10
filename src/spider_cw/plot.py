@@ -5,9 +5,13 @@ from spider_cw.kinematics import BODY_A, BODY_B, LEG_ORDER, leg_joints, BASE_ANG
 
 
 def animate_gait(chromosome, interval=33, save=None, ground_z=None):
-    genes = np.array(chromosome.genes)
-    if genes.ndim == 1:
-        genes = genes[None, :]
+    genes = None
+    if "genes" in chromosome:
+        genes = np.array(chromosome.genes)
+        if genes.ndim == 1:
+            genes = genes[None, :]
+    else:
+        genes = chromosome
     joints = leg_joints(genes)
     num_frames = len(joints)
 
