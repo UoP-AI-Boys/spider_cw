@@ -1,15 +1,23 @@
+import os
+import threading
+import time
 from datetime import datetime
-from spider_cw.plot import animate_gait
+
 import numpy as np
+
+from spider_cw.plot import animate_gait
+from spider_cw.visualization import plot_fitness, plot_gait
+
+# Script Params
+GAITS_SAVE_DIR = os.getenv("GAITS_SAVE_DIR", "gaits")
+DEBUG_GAIT_PROGRESS = os.getenv("DEBUG_GAIT_PROGRESS", "False").lower() == "true"
+MAX_RENDER_THREADS = int(os.getenv("MAX_RENDER_THREADS", "4"))
 
 # Chromosome Encoding
 N_FRAMES = 300  # Frames in final gait
 N_KEYFRAMES = 8  # Keyframes in the chromosome
 N_LEGS = 8  # Number of legs on the spider
 N_JOINTS = 24  # Total number of joints
-
-# JOINT_MIN = np.tile([-0.5, -1.2, -2.2], N_LEGS)  # shape (24,)
-# JOINT_MAX = np.tile([0.5, 0.6, -0.6], N_LEGS)  # shape (24,)
 
 JOINT_MIN = np.tile([-0.35, -1.10, -1.60], N_LEGS)  # shape (24,)
 JOINT_MAX = np.tile([0.35, -0.50, -0.70], N_LEGS)  # shape (24,)
@@ -18,7 +26,7 @@ JOINT_MAX = np.tile([0.35, -0.50, -0.70], N_LEGS)  # shape (24,)
 COXA_FORWARD_SIGN = np.array([-1, -1, -1, -1, 1, 1, 1, 1])
 FEMUR_UP_SIGN = 1
 TARGET_STRIDE = 0.6
-SMOOTH_SCALE = 1e-3
+SMOOTH_SCALE = 1e-3  # bigger = allows more jerky movement
 WEIGHTS = {"stepping": 1.0, "coordination": 2.0, "lift": 1.0, "smoothness": 1.0}
 
 # Genetic Algorithm Params
@@ -34,15 +42,26 @@ STALL_GENERATIONS = 100  # stop if the best fitness hasn't improved for this lon
 
 
 # Chromosome Stuff
-
-
 def random_chromosome(rng):
+    """
+    Random Chromosome
+
+    Angles are spread around the middle of the joint's ranges.
+    """
     center = (JOINT_MIN + JOINT_MAX) / 2
     spread = INITIAL_SPREAD * (JOINT_MAX - JOINT_MIN) / 2
     return rng.uniform(center - spread, center + spread, size=(N_KEYFRAMES, N_JOINTS))
 
 
 def decode(chromosome):
+    """
+    Decodes a keyframe'd chromosome to a full gait
+
+    (N_KEYFRAMES, 24) chromosome -> (N_FRAMES, 24) gait
+    Keyframe k sits at frame k * (300 / N_KEYFRAMES). For each joint,
+    frames in between are linearly interpolated. period=N_FRAMES makes it
+    wrap round, so the last frame blends into the first frame
+    """
     key_times = np.arange(N_KEYFRAMES) * (N_FRAMES / N_KEYFRAMES)
     frames = np.arange(N_FRAMES)
 
@@ -54,37 +73,63 @@ def decode(chromosome):
 
 
 # Fitness Stuff
-
-
 def correlation(x, y):
-    x, y = x - x.mean(), y - y.mean()
-    denom = np.sqrt((x**2).sum() * (y**2).sum())
-    return 0.0 if denom < 1e-12 else float((x * y).sum() / denom)
+    """
+    How similarly 2 values move over time, from -1 to 1.
+
+    1 = rise and fall together (in sync)
+    -1 = one rises while the other falls (opposite)
+    0 = no relation
+    """
+    if x.std() == 0 or y.std() == 0:
+        return 0.0
+    return float(np.corrcoef(x, y)[0, 1])
 
 
 def stepping_fitness(coxa):
+    """
+    Each leg's coxa swing (max - min) should match TARGET_STRIDE
+    prevents the GA from settling on a gait that stands still.
+    """
     stride = coxa.max(axis=0) - coxa.min(axis=0)
     error = np.abs(stride - TARGET_STRIDE) / TARGET_STRIDE
     return float(np.mean(np.exp(-4 * error**2)))
 
 
 def coordination_fitness(coxa):
-    corrs = [correlation(coxa[:, i], coxa[i, (i + 1) % N_LEGS]) for i in range(N_LEGS)]
+    """
+    Neighbouring legs should be out of sync
+    Correlation -1 -> score 1
+    Correlation 1  -> score 0
+    """
+    corrs = [correlation(coxa[:, i], coxa[:, (i + 1) % N_LEGS]) for i in range(N_LEGS)]
     return float(np.mean([(1 - c) / 2 for c in corrs]))
 
 
 def lift_fitness(coxa, femur):
+    """
+    A leg should be raised while swinging forward and down
+    while pushing back. Correlate coxa velocity with femur
+    height. np.roll wraps around because the gait loops.
+    """
     velocity = np.roll(coxa, -1, axis=0) - coxa
     corrs = [correlation(velocity[:, i], femur[:, i]) for i in range(N_LEGS)]
     return float(np.mean([(1 + c) / 2 for c in corrs]))
 
 
 def smoothness_fitness(gait):
+    """
+    Penalise sudden jerks.
+    Average squared acceleration between frames.
+    """
     accel = np.roll(gait, -1, axis=0) - 2 * gait + np.roll(gait, 1, axis=0)
     return float(np.exp(-np.mean(accel**2) / SMOOTH_SCALE))
 
 
 def fitness_breakdown(chromosome):
+    """
+    All 4 Scores plus weighted total
+    """
     gait = decode(chromosome)
 
     coxa = gait[:, 0::3] * COXA_FORWARD_SIGN
@@ -102,19 +147,24 @@ def fitness_breakdown(chromosome):
 
 
 def fitness(chromosome):
+    """Overall fitness for the chromosome. Best possible = sum of WEIGHTS"""
     return fitness_breakdown(chromosome)["total"]
 
 
 # GA Stuff
-
-
 def tournament_select(population, fitnesses, rng):
+    """
+    Pick TOURNAMENT_SIZE random chromosomes; return fittest.
+    """
     contenders = rng.choice(len(population), TOURNAMENT_SIZE, replace=False)
     winner = contenders[np.argmax(fitnesses[contenders])]
     return population[winner]
 
 
 def crossover(parent1, parent2, rng):
+    """
+    Leg-wise uniform crossover.
+    """
     child1, child2 = parent1.copy(), parent2.copy()
 
     if rng.random() > CROSSOVER_RATE:
@@ -130,6 +180,11 @@ def crossover(parent1, parent2, rng):
 
 
 def mutate(chromosome, rng):
+    """
+    Gaussian mutation
+    Each gene, with chance MUTATION_RATE, gets random noise of
+    size MUTATION_STRENGTH * the joints range. Clipped to the joints limits
+    """
     mask = rng.random(chromosome.shape) < MUTATION_RATE
 
     noise = rng.normal(
@@ -140,6 +195,11 @@ def mutate(chromosome, rng):
 
 
 def train_ga():
+    """
+    Train the genetic algorithm
+
+    returns the best chromosome and generation history
+    """
     rng = np.random.default_rng()
     max_fitness = sum(WEIGHTS.values())
 
@@ -147,6 +207,8 @@ def train_ga():
     population = [random_chromosome(rng) for _ in range(POPULATION_SIZE)]
     history = {"best": [], "mean": [], "breakdown": []}
     best_ever, best_ever_fit, last_improvement = None, -np.inf, 0
+
+    threads = []
 
     for gen in range(MAX_GENERATIONS):
         fitnesses = np.array([fitness(c) for c in population])
@@ -163,6 +225,38 @@ def train_ga():
 
         if gen % 25 == 0:
             b = history["breakdown"][-1]
+            if DEBUG_GAIT_PROGRESS:
+                run_date = str(datetime.now()).replace(" ", "_")
+                gait = decode(population[best_idx])
+
+                threads = [x for x in threads if x.is_alive()]
+
+                wait_start = None
+                while len(threads) >= MAX_RENDER_THREADS:
+                    if wait_start is None:
+                        wait_start = time.perf_counter()
+                        print(
+                            "[DEBUG | gait_animation]: Too many render threads alive waiting for thread to finish..."
+                        )
+                    threads[0].join()
+                    threads = [x for x in threads if x.is_alive()]
+
+                if wait_start is not None:
+                    print(
+                        f"[DEBUG | gait_animation]: Blocked for {time.perf_counter() - wait_start:.2f}s waiting for a render slot"
+                    )
+
+                animation_thread = threading.Thread(
+                    target=animate_gait,
+                    kwargs={
+                        "chromosome": gait,
+                        "title": f"generation {gen}",
+                        "save": f"gaits/gen-{gen}_{run_date}.gif",
+                    },
+                )
+                animation_thread.start()
+                threads.append(animation_thread)
+
             print(
                 f"gen {gen:4d} | best {fitnesses[best_idx]:.3f} / {max_fitness:.1f} "
                 f"| mean {fitnesses.mean():.3f} | "
@@ -192,16 +286,25 @@ def train_ga():
 
         population = next_population
 
+    for thread in threads:
+        thread.join()
+
     print(f"Best fitness: {best_ever_fit:.3f} / {max_fitness:.1f}")
     return best_ever, history
 
 
 def main():
-    run_date = datetime.now()
+    os.makedirs("gaits", exist_ok=True)
+    run_date = str(datetime.now()).replace(" ", "_")
 
     best, history = train_ga()
-    gait = decode(best)
-    animate_gait(gait, save=f"gaits/best-{run_date}.gif")
+    best_gait = decode(best)
+
+    animate_gait(best_gait, save=f"gaits/best-{run_date}.gif")
+
+    os.makedirs("visualisations", exist_ok=True)
+    plot_fitness(history)
+    plot_gait(best_gait)
 
 
 if __name__ == "__main__":

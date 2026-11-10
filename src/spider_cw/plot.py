@@ -1,12 +1,15 @@
-import matplotlib.pyplot as plt
+import threading
+
 import numpy as np
 from matplotlib.animation import FuncAnimation
-from spider_cw.kinematics import BODY_A, BODY_B, LEG_ORDER, leg_joints, BASE_ANGLES
+from matplotlib.backends.backend_agg import FigureCanvasAgg
+from matplotlib.figure import Figure
+
+from spider_cw.kinematics import BASE_ANGLES, BODY_A, BODY_B, LEG_ORDER, leg_joints
 
 
-def animate_gait(chromosome, interval=33, save=None, ground_z=None):
-    genes = None
-    if "genes" in chromosome:
+def animate_gait(chromosome, title=None, interval=33, save=None, ground_z=None):
+    if hasattr(chromosome, "genes"):
         genes = np.array(chromosome.genes)
         if genes.ndim == 1:
             genes = genes[None, :]
@@ -16,11 +19,16 @@ def animate_gait(chromosome, interval=33, save=None, ground_z=None):
     num_frames = len(joints)
 
     # Copied from plot_spider_pose.m
-    fig = plt.figure()
+    fig = Figure()
+    FigureCanvasAgg(fig)
     ax = fig.add_subplot(projection="3d")
     ax.set(
-        xlim=(-4, 4), ylim=(-4, 4), zlim=(-2, 2),
-        xlabel="X", ylabel="Y", zlabel="Z",
+        xlim=(-4, 4),
+        ylim=(-4, 4),
+        zlim=(-2, 2),
+        xlabel="X",
+        ylabel="Y",
+        zlabel="Z",
     )
     ax.set_box_aspect((1, 1, 0.5))
 
@@ -35,7 +43,13 @@ def animate_gait(chromosome, interval=33, save=None, ground_z=None):
 
     if ground_z is not None:
         gx, gy = np.meshgrid([-4, 4], [-4, 4])
-        ax.plot_surface(gx, gy, np.full_like(gx, ground_z, dtype=float), alpha=0.15, color="tab:green")
+        ax.plot_surface(
+            gx,
+            gy,
+            np.full_like(gx, ground_z, dtype=float),
+            alpha=0.15,
+            color="tab:green",
+        )
 
     for name, base_angle, leg in zip(LEG_ORDER, BASE_ANGLES, joints[0]):
         pos = leg[0] + 0.2 * np.array([np.cos(base_angle), np.sin(base_angle), 0])
@@ -43,25 +57,33 @@ def animate_gait(chromosome, interval=33, save=None, ground_z=None):
 
     segments = []
     for _ in LEG_ORDER:
-        segments.append([ax.plot([], [], [], color=c, lw=2)[0] for c in ("k", "b", "r")])
+        segments.append(
+            [ax.plot([], [], [], color=c, lw=2)[0] for c in ("k", "b", "r")]
+        )
     feet = ax.scatter([], [], [], color="r", s=20)
-    title = ax.set_title("")
+    plt_title = ax.set_title("")
 
     def update(frame):
         for lines, leg in zip(segments, joints[frame]):
             for s, line in enumerate(lines):
-                line.set_data_3d(leg[s:s + 2, 0], leg[s:s + 2, 1], leg[s:s + 2, 2])
+                line.set_data_3d(
+                    leg[s : s + 2, 0], leg[s : s + 2, 1], leg[s : s + 2, 2]
+                )
         foot = joints[frame, :, -1, :]
         feet._offsets3d = (foot[:, 0], foot[:, 1], foot[:, 2])
-        title.set_text(f"Spider gait - frame {frame + 1} of {num_frames}")
-        return [line for lines in segments for line in lines] + [feet, title]
+        plt_title.set_text(
+            f"{f'[{title}] ' if title is not None else ''}Spider gait - frame {frame + 1} of {num_frames}"
+        )
+        return [line for lines in segments for line in lines] + [feet, plt_title]
 
     anim = FuncAnimation(fig, update, frames=num_frames, interval=interval)
 
     if save:
-        print(f"Saving {num_frames} frames to {save}...")
         anim.save(save, fps=round(1000 / interval))
-        print("Done.")
+        if threading.current_thread() is threading.main_thread():
+            print(f"Saving {num_frames} frames to {save}...")
     else:
+        import matplotlib.pyplot as plt
+
         plt.show()
     return anim
