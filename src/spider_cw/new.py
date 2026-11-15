@@ -295,12 +295,12 @@ def train_ga():
 
 def main():
     os.makedirs("gaits", exist_ok=True)
-    run_date = str(datetime.now()).replace(" ", "_")
+    run_date = str(datetime.now()).replace(" ", "_").replace(".", "_").replace("-", "_").replace(":", "_")
 
     best, history = train_ga()
     best_gait = decode(best)
 
-    animate_gait(best_gait, save=f"gaits/best-{run_date}.gif")
+    animate_gait(best_gait, save=f"gaits\\best-{run_date}.gif")
 
     os.makedirs("visualisations", exist_ok=True)
     plot_fitness(history)
