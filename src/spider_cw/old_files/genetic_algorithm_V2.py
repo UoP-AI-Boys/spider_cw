@@ -1,12 +1,12 @@
 import random as rn
-from kinematics import foot_positions
+from spider_cw.kinematics import foot_positions
 
 class Chromosome():
     def __int__(self):
         self.coxa = ()
         self.femur = ()
         self.tibia = ()
-    
+
     def initialise_chromosomes(self):
         self.legs = []
         for i in range (0,8):
@@ -65,7 +65,5 @@ def main():
         fitness_function(feet_locations)
 
     print (feet_locations)
-        
-main()
 
-        
+main()

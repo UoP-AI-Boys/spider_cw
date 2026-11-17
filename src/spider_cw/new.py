@@ -300,7 +300,8 @@ def main():
     best, history = train_ga()
     best_gait = decode(best)
 
-    animate_gait(best_gait, save=f"gaits\\best-{run_date}.gif")
+    gaits_path = os.path.join("gaits", f"best-{run_date}.gif")
+    animate_gait(best_gait, save=gaits_path)
 
     os.makedirs("visualisations", exist_ok=True)
     plot_fitness(history)
