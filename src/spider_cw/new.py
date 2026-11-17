@@ -53,23 +53,37 @@ def random_chromosome(rng):
     return rng.uniform(center - spread, center + spread, size=(N_KEYFRAMES, N_JOINTS))
 
 
+def bspline_interpolation(chromosome):
+    """
+    Periodic uniform cubic B-spline interpolation.
+
+    Keyframes act as control points. Each frame is a
+    weighted average of the 4 nearest keyframes, and
+    the weights change smoothly moving along the gait.
+    """
+    key_pos = np.arange(N_FRAMES) * (N_KEYFRAMES / N_FRAMES)
+    seg = np.floor(key_pos).astype(int)
+    t = (key_pos - seg)[:, None]
+
+    p0 = chromosome[(seg - 1) % N_KEYFRAMES]
+    p1 = chromosome[seg % N_KEYFRAMES]
+    p2 = chromosome[(seg + 1) % N_KEYFRAMES]
+    p3 = chromosome[(seg + 2) % N_KEYFRAMES]
+
+    w0 = (1 - t) ** 3 / 6
+    w1 = (3 * t**3 - 6 * t**2 + 4) / 6
+    w2 = (-3 * t**3 + 3 * t**2 + 3 * t + 1) / 6
+    w3 = t**3 / 6
+
+    return w0 * p0 + w1 * p1 + w2 * p2 + w3 * p3
+
+
 def decode(chromosome):
     """
     Decodes a keyframe'd chromosome to a full gait
-
     (N_KEYFRAMES, 24) chromosome -> (N_FRAMES, 24) gait
-    Keyframe k sits at frame k * (300 / N_KEYFRAMES). For each joint,
-    frames in between are linearly interpolated. period=N_FRAMES makes it
-    wrap round, so the last frame blends into the first frame
     """
-    key_times = np.arange(N_KEYFRAMES) * (N_FRAMES / N_KEYFRAMES)
-    frames = np.arange(N_FRAMES)
-
-    gait = np.empty((N_FRAMES, N_JOINTS))
-    for j in range(N_JOINTS):
-        gait[:, j] = np.interp(frames, key_times, chromosome[:, j], period=N_FRAMES)
-
-    return gait
+    return bspline_interpolation(chromosome)
 
 
 # Fitness Stuff
@@ -295,7 +309,13 @@ def train_ga():
 
 def main():
     os.makedirs("gaits", exist_ok=True)
-    run_date = str(datetime.now()).replace(" ", "_").replace(".", "_").replace("-", "_").replace(":", "_")
+    run_date = (
+        str(datetime.now())
+        .replace(" ", "_")
+        .replace(".", "_")
+        .replace("-", "_")
+        .replace(":", "_")
+    )
 
     best, history = train_ga()
     best_gait = decode(best)
