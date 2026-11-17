@@ -1,9 +1,8 @@
 import threading
 
+import matplotlib.pyplot as plt
 import numpy as np
 from matplotlib.animation import FuncAnimation
-from matplotlib.backends.backend_agg import FigureCanvasAgg
-from matplotlib.figure import Figure
 
 from spider_cw.kinematics import BASE_ANGLES, BODY_A, BODY_B, LEG_ORDER, leg_joints
 
@@ -19,8 +18,7 @@ def animate_gait(chromosome, title=None, interval=33, save=None, ground_z=None):
     num_frames = len(joints)
 
     # Copied from plot_spider_pose.m
-    fig = Figure()
-    FigureCanvasAgg(fig)
+    fig = plt.figure()
     ax = fig.add_subplot(projection="3d")
     ax.set(
         xlim=(-4, 4),
@@ -83,7 +81,5 @@ def animate_gait(chromosome, title=None, interval=33, save=None, ground_z=None):
         if threading.current_thread() is threading.main_thread():
             print(f"Saving {num_frames} frames to {save}...")
     else:
-        import matplotlib.pyplot as plt
-
         plt.show()
     return anim

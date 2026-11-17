@@ -5,8 +5,16 @@ from datetime import datetime
 
 import numpy as np
 
+from spider_cw.kinematics import foot_positions
 from spider_cw.plot import animate_gait
-from spider_cw.visualization import plot_fitness, plot_gait
+from spider_cw.visualization import (
+    plot_diversity,
+    plot_fitness,
+    plot_foot_paths,
+    plot_footfall,
+    plot_gait,
+    plot_leg_spline,
+)
 
 # Script Params
 GAITS_SAVE_DIR = os.getenv("GAITS_SAVE_DIR", "gaits")
@@ -24,9 +32,9 @@ JOINT_MAX = np.tile([0.35, -0.50, -0.70], N_LEGS)  # shape (24,)
 
 # Fitness Params
 COXA_FORWARD_SIGN = np.array([-1, -1, -1, -1, 1, 1, 1, 1])
-FEMUR_UP_SIGN = 1
 TARGET_STRIDE = 0.6
-SMOOTH_SCALE = 1e-3  # bigger = allows more jerky movement
+SMOOTH_SCALE = 0.1  # bigger = allows more jerky movement
+GROUND_TOLERANCE = 0.5
 WEIGHTS = {"stepping": 1.0, "coordination": 2.0, "lift": 1.0, "smoothness": 1.0}
 
 # Genetic Algorithm Params
@@ -120,40 +128,41 @@ def coordination_fitness(coxa):
     return float(np.mean([(1 - c) / 2 for c in corrs]))
 
 
-def lift_fitness(coxa, femur):
+def lift_fitness(coxa, foot_height):
     """
     A leg should be raised while swinging forward and down
     while pushing back. Correlate coxa velocity with femur
     height. np.roll wraps around because the gait loops.
     """
     velocity = np.roll(coxa, -1, axis=0) - coxa
-    corrs = [correlation(velocity[:, i], femur[:, i]) for i in range(N_LEGS)]
+    corrs = [correlation(velocity[:, i], foot_height[:, i]) for i in range(N_LEGS)]
     return float(np.mean([(1 + c) / 2 for c in corrs]))
 
 
-def smoothness_fitness(gait):
+def smoothness_fitness(chromosome):
     """
-    Penalise sudden jerks.
+    Penalise sudden jerks / large accelerations / fast oscillation.
     Average squared acceleration between frames.
     """
-    accel = np.roll(gait, -1, axis=0) - 2 * gait + np.roll(gait, 1, axis=0)
+    norm = chromosome / (JOINT_MAX - JOINT_MIN)
+    accel = np.roll(norm, -1, axis=0) - 2 * norm + np.roll(norm, 1, axis=0)
     return float(np.exp(-np.mean(accel**2) / SMOOTH_SCALE))
-
 
 def fitness_breakdown(chromosome):
     """
     All 4 Scores plus weighted total
     """
     gait = decode(chromosome)
+    feet = foot_positions(gait)
 
     coxa = gait[:, 0::3] * COXA_FORWARD_SIGN
-    femur = gait[:, 1::3] * FEMUR_UP_SIGN
+    foot_height = feet[..., 2]
 
     scores = {
         "stepping": stepping_fitness(coxa),
         "coordination": coordination_fitness(coxa),
-        "lift": lift_fitness(coxa, femur),
-        "smoothness": smoothness_fitness(gait),
+        "lift": lift_fitness(coxa, foot_height),
+        "smoothness": smoothness_fitness(chromosome),
     }
 
     scores["total"] = sum(WEIGHTS[k] * scores[k] for k in WEIGHTS)
@@ -219,7 +228,7 @@ def train_ga():
 
     # Initialisation
     population = [random_chromosome(rng) for _ in range(POPULATION_SIZE)]
-    history = {"best": [], "mean": [], "breakdown": []}
+    history = {"best": [], "mean": [], "breakdown": [], "diversity": []}
     best_ever, best_ever_fit, last_improvement = None, -np.inf, 0
 
     threads = []
@@ -233,9 +242,13 @@ def train_ga():
             best_ever_fit = fitnesses[best_idx]
             last_improvement = gen
 
+        genes = np.stack(population)
+        spread = genes.std(axis=0) / (JOINT_MAX - JOINT_MIN)
+
         history["best"].append(fitnesses[best_idx])
         history["mean"].append(fitnesses.mean())
         history["breakdown"].append(fitness_breakdown(population[best_idx]))
+        history["diversity"].append(float(spread.mean()))
 
         if gen % 25 == 0:
             b = history["breakdown"][-1]
@@ -326,6 +339,10 @@ def main():
     os.makedirs("visualisations", exist_ok=True)
     plot_fitness(history)
     plot_gait(best_gait)
+    plot_footfall(best_gait)
+    plot_foot_paths(best_gait)
+    plot_diversity(history)
+    plot_leg_spline(best, leg=0)
 
 
 if __name__ == "__main__":
