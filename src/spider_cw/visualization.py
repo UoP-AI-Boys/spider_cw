@@ -12,7 +12,7 @@ def plot_fitness(history):
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(12, 4))
     ax1.plot(history["best"], label="best")
     ax1.plot(history["mean"], label="population mean")
-    ax1.set(title="Gitness over generations", xlabel="generation", ylabel="fitness")
+    ax1.set(title="Fitness over generations", xlabel="generation", ylabel="fitness")
     ax1.legend()
     for k in GA.WEIGHTS:
         ax2.plot([b[k] for b in history["breakdown"]], label=k)
