@@ -21,6 +21,11 @@ from spider_cw.new import (
 )
 
 class DenseLayer:
+    ''' creates a single layer collection of neurons taking:
+            inputs
+            neurons
+        facillitating forward and backward traversal through the nueral net    
+    '''
     def __init__(self, n_inputs, n_neurons):
         self.weights = np.random.uniform(-0.5, 0.5, size=(n_inputs, n_neurons))
         self.biases = np.zeros((1, n_neurons))
@@ -132,8 +137,8 @@ def plot_joint_trajectories(ga_gait, nn_gait, save_path="gaits/nn_joint_trajecto
 
 
 if __name__ == "__main__":
-    np.random.seed(42)
-    os.makedirs("gaits", exist_ok=True)
+    np.random.seed(42) # generates a repeatable set of inputs
+    os.makedirs("gaits", exist_ok=True) 
 
     best_chromosome, _ = train_ga()
     target_gait = decode(best_chromosome)
