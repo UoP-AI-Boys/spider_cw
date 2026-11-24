@@ -7,14 +7,6 @@ import numpy as np
 
 from spider_cw.kinematics import foot_positions
 from spider_cw.plot import animate_gait
-from spider_cw.visualization import (
-    plot_diversity,
-    plot_fitness,
-    plot_foot_paths,
-    plot_footfall,
-    plot_gait,
-    plot_leg_spline,
-)
 
 # Script Params
 GAITS_SAVE_DIR = os.getenv("GAITS_SAVE_DIR", "gaits")
@@ -147,6 +139,7 @@ def smoothness_fitness(chromosome):
     norm = chromosome / (JOINT_MAX - JOINT_MIN)
     accel = np.roll(norm, -1, axis=0) - 2 * norm + np.roll(norm, 1, axis=0)
     return float(np.exp(-np.mean(accel**2) / SMOOTH_SCALE))
+
 
 def fitness_breakdown(chromosome):
     """
@@ -321,6 +314,15 @@ def train_ga():
 
 
 def main():
+    from spider_cw.visualization import (
+        plot_diversity,
+        plot_fitness,
+        plot_foot_paths,
+        plot_footfall,
+        plot_gait,
+        plot_leg_spline,
+    )
+
     os.makedirs("gaits", exist_ok=True)
     run_date = (
         str(datetime.now())
