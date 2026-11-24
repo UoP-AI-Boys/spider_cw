@@ -127,7 +127,7 @@ def scale_to_joints(scaled_gait):
     gait = scaled_gait * half_range + center
     return np.clip(gait, JOINT_MIN, JOINT_MAX)
 
-def _main():
+def main():
     from spider_cw.visualization import (
         plot_foot_paths,
         plot_footfall,
@@ -170,26 +170,6 @@ def _main():
     plot_footfall(nn_gait)
     plot_foot_paths(nn_gait)
 
-def test():
-    # layer_count = 4
-    # layer_sizes = [2, 48, 48, 24]
-
-    def create_nn(layers):
-        for i in range(len(layers) - 1):
-            prevSize = layers[i]
-            currSize = layers[i + 1]
-
-            print(f"Layer {i + 1}: {prevSize} -> {currSize}")
-
-    create_nn([2, 48, 48, 24])
-
-def main():
-    nn = SimpleGaitNetwork(layers=[2, 48, 48, 24], activation_func=tanh)
-
-    print(nn.layers)
-    for layer in nn.layers:
-        print(layer.weights.shape)
 
 if __name__ == "__main__":
-    # test()
-    _main()
+    main()
