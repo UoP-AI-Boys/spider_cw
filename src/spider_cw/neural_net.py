@@ -54,7 +54,7 @@ class DenseLayer:
         self.output = self.activation(inputs @ self.weights + self.biases)
         return self.output
 
-    """ """
+    """backpropagates through the neural network updating the weights and biases accordingly"""
     def backward(self, d_output, learning_rate):
         dz = d_output * (1.0 - self.output**2)
 
@@ -99,10 +99,18 @@ class SimpleGaitNetwork:
             train_losses.append(loss)
 
             loss_grad = (2.0 * error) / n_samples
+            self.reversed_layers = self.layers.reverse()
 
+            for layer_index in range (self.layers):
+                if self.layers[layer_index] == 0:
+                    grad = self.layers[layer_index].backward(loss_grad,learning_rate)
+                else:
+                    grad = self.layers[layer_index].backward(grad,learning_rate)
+            '''
             grad2 = self.layer3.backward(loss_grad, learning_rate)
             grad1 = self.layer2.backward(grad2, learning_rate)
             self.layer1.backward(grad1, learning_rate)
+            '''
 
             if epoch % 500 == 0 or epoch == 1:
                 print(f"Epoch {epoch:4d}/{epochs} | Loss: {loss:.6f}")
